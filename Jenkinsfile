@@ -1,23 +1,29 @@
+
 pipeline {
     agent any
-    environment {
-        PATH = "/opt/apache-maven-3.8.4/bin/mvn:$PATH"
+    environment{
+        DOCKERHUB_CREDENTIALS=credentials('docker-hub')
     }
     stages{
-        stage('git checkout'){
+        stage('docker build'){
             steps{
-              checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/manikumar9999/mk-group.git']]])  
+                sh 'docker build -t manikumar99/srikanth:$BUILD_NUMBER .'
             }
         }
-        stage('mvn'){
+        stage('docker login'){
             steps{
-            sh 'mvn clean install package'    
+                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
             }
+        }
+        stage('docker push'){
+            steps{
+                sh 'docker push manikumar99/srikanth:$BUILD_NUMBER'
             }
-            stage('deploy'){
-                steps{
-                   deploy adapters: [tomcat9(credentialsId: 'tom', path: '', url: 'http://34.229.123.251:8085/')], contextPath: null, war: '**/*.war' 
-                }
-            }
+        }
+    }
+    post{
+        always{
+            sh 'docker logout'
+        }
     }
 }
